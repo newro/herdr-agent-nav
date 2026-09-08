@@ -1,21 +1,16 @@
 # herdr plugin: Agent Nav
 #
-# Two things that belong together, because they share one piece of state:
-# "which agent were you last looking at".
+# Agent navigation for herdr: index numbers on the agent rows, a marker on the
+# agent you were last in, and prev/next/back that pivot on it.
 #
-#   1. Sidebar numbers. herdr's built-in sidebar tokens carry no index, so
-#      prefix+1..9 (focus_agent) and alt+1..9 (switch_workspace) have nothing on
-#      screen to aim at. A daemon stamps each row's index as display-only
-#      metadata, which herdr renders through $num token rows. Pane and agent
-#      counts ($panes / $agents) and a marker for the last-focused agent
-#      ($lastbar) ride along.
+# herdr's built-in previous_agent / next_agent pivot on the *currently focused
+# pane*. Step off onto a shell and there is no pivot left, so they jump to the
+# first or last entry instead of the neighbour of wherever you were. The daemon
+# here tracks the last-focused agent, and the three actions use it as the pivot:
+# press prev/next from a shell and you land beside the agent you were just in.
 #
-#   2. Agent cycling. herdr's built-in previous_agent / next_agent pivot on the
-#      *currently focused pane*. Step off onto a shell and there is no pivot
-#      left, so they jump to the first or last entry instead of the neighbour of
-#      wherever you were. The daemon already tracks the last-focused agent for
-#      the sidebar marker, so the cycle actions reuse it as the pivot: press
-#      prev/next from a shell and you land beside the agent you were just in.
+# Space (workspace) numbering and pinning live in a separate plugin,
+# newro.window-util, which also covers pane creation, splitting, and resizing.
 #
 # Install:   herdr plugin install newro/herdr-agent-nav
 # Local dev: herdr plugin link /path/to/herdr-agent-nav
@@ -31,7 +26,7 @@ version = "0.1.0"
 # show. Developed and verified against 0.9.0-preview; 0.8.0 is a conservative
 # floor rather than a tested one, so lower it only with a schema diff in hand.
 min_herdr_version = "0.8.0"
-description = "Sidebar index numbers for spaces and agents, plus agent cycling that pivots on the agent you were last in."
+description = "Agent navigation for herdr: index numbers on the agent rows, a marker on the last-focused agent, and prev/next/back that pivot on it."
 platforms = ["linux", "macos"]
 
 # Commands are argv arrays (no shell) and run with the plugin dir as cwd.
@@ -81,16 +76,3 @@ title = "Back to last agent"
 description = "Return to the agent you were last in, or toggle between the last two"
 contexts = ["pane", "workspace"]
 command = ["python3", "cycle.py", "back"]
-
-# Pinned-number lookup is deliberately NOT exposed as an action.
-#
-# It takes an argument, and how an action receives one is not something this
-# plugin has verified — so shipping it as an action would mean shipping a button
-# whose behaviour is unknown. The same lookup is available from a shell, which is
-# where a caller that has a number in hand lives anyway:
-#
-#   python3 daemon.py --resolve 0     # prints the workspace id, or nothing
-#
-# Combine it with `herdr workspace focus` to jump to a pinned space:
-#
-#   id=$(python3 daemon.py --resolve 0) && [ -n "$id" ] && herdr workspace focus "$id"

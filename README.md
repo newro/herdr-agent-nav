@@ -1,40 +1,37 @@
 # herdr-agent-nav
 
-A [herdr](https://github.com/herdrdev/herdr) plugin that numbers the sidebar and
-makes agent switching land where you expect — tmux's `last-window` muscle
-memory, for herdr's agents.
+A [herdr](https://github.com/herdrdev/herdr) plugin that makes agent switching
+land where you expect — tmux's `last-window` muscle memory, for herdr's agents.
 
-Two things, one plugin, because they share a single piece of state: **which
-agent were you last looking at.**
+herdr's built-in `previous_agent` / `next_agent` pivot on the *currently focused
+pane*. Step off onto a shell — which you do constantly — and there is no pivot
+left, so they jump to the first or last entry in the list instead of the
+neighbour of wherever you actually were.
 
-**The sidebar has no numbers.** `prefix+1..9` focuses an agent by index and
-`alt+1..9` switches to a space by index, but herdr's built-in sidebar rows carry
-no index — so there is nothing on screen to aim at and you end up counting rows.
+This plugin tracks the agent you were last in, marks it on the sidebar, and uses
+it as the pivot. Press `next` from a shell and you land beside the agent you were
+just in.
 
-**Switching loses its place.** herdr's built-in `previous_agent` /
-`next_agent` pivot on the *currently focused pane*. Step off onto a shell — which
-you do constantly — and there is no pivot left, so they jump to the first or last
-entry in the list instead of the neighbour of wherever you actually were.
-
-This plugin stamps the numbers, and reuses the same last-focused-agent record to
-give switching a pivot that survives stepping away.
+`prefix+1..9` also has nothing on screen to aim at, since herdr's agent rows
+carry no index, so the index is stamped too.
 
 ## Features
 
-- **Numbers on every sidebar row.** Spaces show their list position, agents show
-  their `focus_agent` index — so the number you see is the number you type.
-- **Open counts per space.** How many panes and how many agents.
+- **Index numbers on the agent rows**, matching the `focus_agent` order — so the
+  number you see is the number you type with `prefix+1..9`.
 - **A marker on the agent you were last in**, so you can see where `back` will
   take you once focus has moved away.
 - **prev / next / back actions** that pivot on that agent rather than on the pane
   you happen to be standing in. Press `next` from a shell and you land beside the
   agent you were just in, not at the end of the list.
-- **Pinned space numbers** (optional). herdr numbers spaces positionally, so a
-  space's number shifts whenever one before it is created, closed, or reordered.
-  Pin one and it keeps its number — including `0`, which herdr's own indexed
-  bindings cannot reach.
 - **Works across spaces.** Switching to an agent in another space moves you
   there.
+- **No configuration.** Nothing to set up beyond the sidebar row and the key
+  bindings.
+
+Space numbering, pinnable space numbers, pane creation, splitting, and resizing
+live in a companion plugin,
+[herdr-window-util](https://github.com/newro/herdr-window-util).
 
 ## Install
 
@@ -138,13 +135,6 @@ values render as `$name` tokens in sidebar rows, so add them to
 `~/.config/herdr/config.toml`:
 
 ```toml
-[ui.sidebar.spaces]
-rows = [
-  ["state_icon", { token = "$num", fg = "#D3C6AA", dim = false }, "workspace"],
-  [{ token = "$panes", fg = "#D3C6AA", dim = false },
-   { token = "$agents", fg = "#D3C6AA", dim = false }],
-]
-
 [ui.sidebar.agents]
 rows = [
   ["state_icon",
@@ -155,13 +145,10 @@ rows = [
 ]
 ```
 
-| Token | Row | Shows |
-|---|---|---|
-| `$num` | spaces | List position, or the pinned number |
-| `$num` | agents | The `focus_agent` index |
-| `$panes` | spaces | Open pane count |
-| `$agents` | spaces | Open agent count |
-| `$lastbar` | agents | Marker on the agent you were last in |
+| Token | Shows |
+|---|---|
+| `$num` | The agent's `focus_agent` index |
+| `$lastbar` | Marker on the agent you were last in |
 
 Two notes on styling, both learned the hard way:
 
@@ -176,33 +163,6 @@ Two notes on styling, both learned the hard way:
 
 The marker appears only once focus **leaves** that row. While you are on it,
 herdr's own selection bar already highlights it.
-
-## Pinned space numbers
-
-Optional. Copy the example into the plugin's config directory:
-
-```bash
-cp space-pins.conf.example \
-   "$(herdr plugin config-dir newro.agent-nav)/space-pins.conf"
-```
-
-```
-# <number> = <pattern>
-0 = @mirror:laptop     # a space herdr-mirror mirrors from that host
-7 = scratch             # exact label
-8 = notes-*             # label glob
-```
-
-`@mirror:<host>` matches by [herdr-mirror](https://github.com/nikok6/herdr-mirror)'s
-map rather than by label, because a mirrored space follows the remote's name — a
-label pin would come undone the moment the remote switches. Without herdr-mirror
-installed the pattern simply never matches.
-
-To jump to a pinned space from a script:
-
-```bash
-id=$(python3 daemon.py --resolve 0) && [ -n "$id" ] && herdr workspace focus "$id"
-```
 
 ## How it works
 

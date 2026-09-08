@@ -13,12 +13,10 @@ PLUGIN_ID = "newro.agent-nav"
 SOURCE = "agent-nav"  # metadata source id, also used as the request id
 
 # herdr hands these to every plugin command. The fallbacks matter more than they
-# look: these scripts are also called directly — `daemon.py --resolve` from a
-# shell script, `cycle.py --dry-run` while developing — and such a process gets
-# none of herdr's variables. Falling back to herdr's own standard layout rather
-# than to the plugin directory is what keeps a direct call reading the same
-# config and state as the daemon. Guessing the plugin directory instead meant a
-# direct --resolve read the shipped example and found no pins at all.
+# look: these scripts are also called directly — `cycle.py --dry-run` while
+# developing, for one — and such a process gets none of herdr's variables.
+# Falling back to herdr's own standard layout rather than to the plugin
+# directory is what keeps a direct call reading the same state as the daemon.
 SOCKET_PATH = os.environ.get("HERDR_SOCKET_PATH") or os.path.expanduser(
     "~/.config/herdr/herdr.sock"
 )
@@ -27,9 +25,6 @@ PLUGIN_ROOT = os.environ.get("HERDR_PLUGIN_ROOT") or os.path.dirname(
 )
 STATE_DIR = os.environ.get("HERDR_PLUGIN_STATE_DIR") or os.path.expanduser(
     f"~/.local/state/herdr/plugins/{PLUGIN_ID}"
-)
-CONFIG_DIR = os.environ.get("HERDR_PLUGIN_CONFIG_DIR") or os.path.expanduser(
-    f"~/.config/herdr/plugins/config/{PLUGIN_ID}"
 )
 
 
@@ -78,17 +73,6 @@ def state_path(name):
     except OSError:
         pass
     return os.path.join(STATE_DIR, name)
-
-
-def config_path(name):
-    """The user's config if present, otherwise the shipped example."""
-    user = os.path.join(CONFIG_DIR, name)
-    if os.path.exists(user):
-        return user
-    beside = os.path.join(PLUGIN_ROOT, name)
-    if os.path.exists(beside):
-        return beside
-    return os.path.join(PLUGIN_ROOT, name + ".example")
 
 
 def write_atomic(path, text):
