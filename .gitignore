@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+# The user's own pins live in the plugin config dir, not here. A copy left in the
+# plugin directory would still be read (config_path falls back to it), so keep it
+# out of the repository to avoid shipping someone else's layout.
+space-pins.conf

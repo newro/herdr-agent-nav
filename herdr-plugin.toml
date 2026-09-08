@@ -1,0 +1,96 @@
+# herdr plugin: Agent Nav
+#
+# Two things that belong together, because they share one piece of state:
+# "which agent were you last looking at".
+#
+#   1. Sidebar numbers. herdr's built-in sidebar tokens carry no index, so
+#      prefix+1..9 (focus_agent) and alt+1..9 (switch_workspace) have nothing on
+#      screen to aim at. A daemon stamps each row's index as display-only
+#      metadata, which herdr renders through $num token rows. Pane and agent
+#      counts ($panes / $agents) and a marker for the last-focused agent
+#      ($lastbar) ride along.
+#
+#   2. Agent cycling. herdr's built-in previous_agent / next_agent pivot on the
+#      *currently focused pane*. Step off onto a shell and there is no pivot
+#      left, so they jump to the first or last entry instead of the neighbour of
+#      wherever you were. The daemon already tracks the last-focused agent for
+#      the sidebar marker, so the cycle actions reuse it as the pivot: press
+#      prev/next from a shell and you land beside the agent you were just in.
+#
+# Install:   herdr plugin install newro/herdr-agent-nav
+# Local dev: herdr plugin link /path/to/herdr-agent-nav
+# Remove:    herdr plugin unlink newro.agent-nav
+# Logs:      herdr plugin log list --plugin newro.agent-nav
+
+id = "newro.agent-nav"
+name = "Agent Nav"
+version = "0.1.0"
+# Every API this plugin calls — events.subscribe, the `tokens` field on
+# pane.report_metadata / workspace.report_metadata, agent.list, workspace.list,
+# session.snapshot, pane.focus — predates 0.8.0 as far as the bundled schemas
+# show. Developed and verified against 0.9.0-preview; 0.8.0 is a conservative
+# floor rather than a tested one, so lower it only with a schema diff in hand.
+min_herdr_version = "0.8.0"
+description = "Sidebar index numbers for spaces and agents, plus agent cycling that pivots on the agent you were last in."
+platforms = ["linux", "macos"]
+
+# Commands are argv arrays (no shell) and run with the plugin dir as cwd.
+# python3 only — no third-party packages, so there is nothing to build.
+
+# The daemon holds a flock and exits quietly if one is already running, so every
+# entry point below can just say "start it" without checking first.
+#
+# herdr runs startup hooks on a fresh server start and on a live handoff, which
+# covers restarts. It does NOT run them on `herdr plugin install`, so a plugin
+# installed into an already-running herdr would sit inert until the next restart
+# — that is what the workspace.focused hook below is for.
+[[startup]]
+command = ["python3", "daemon.py", "--restore"]
+
+# Install-time recovery. workspace.focused is the earliest event a real user
+# reliably produces, and --restore is a flock attempt that exits in microseconds
+# once the daemon is live. The trade is one short-lived process per space switch
+# for a plugin that works the moment it is installed.
+[[events]]
+on = "workspace.focused"
+command = ["python3", "daemon.py", "--restore"]
+
+# Move to the neighbouring agent. From a shell pane these pivot on the
+# last-focused agent (the row marked in the sidebar), not on the shell.
+[[actions]]
+id = "prev"
+title = "Previous agent"
+description = "Focus the agent before the one you were last in"
+contexts = ["pane", "workspace"]
+command = ["python3", "cycle.py", "prev"]
+
+[[actions]]
+id = "next"
+title = "Next agent"
+description = "Focus the agent after the one you were last in"
+contexts = ["pane", "workspace"]
+command = ["python3", "cycle.py", "next"]
+
+# The agent counterpart of last_pane. herdr has no last_agent action, so this
+# reads the daemon's record. From a shell it returns to the agent you were last
+# in; from an agent it toggles to the one before that, so repeated presses
+# bounce between two agents.
+[[actions]]
+id = "back"
+title = "Back to last agent"
+description = "Return to the agent you were last in, or toggle between the last two"
+contexts = ["pane", "workspace"]
+command = ["python3", "cycle.py", "back"]
+
+# Pinned-number lookup is deliberately NOT exposed as an action.
+#
+# It takes an argument, and how an action receives one is not something this
+# plugin has verified — so shipping it as an action would mean shipping a button
+# whose behaviour is unknown. The same lookup is available from a shell, which is
+# where a caller that has a number in hand lives anyway:
+#
+#   python3 daemon.py --resolve 0     # prints the workspace id, or nothing
+#
+# Combine it with `herdr workspace focus` to jump to a pinned space:
+#
+#   id=$(python3 daemon.py --resolve 0) && [ -n "$id" ] && herdr workspace focus "$id"

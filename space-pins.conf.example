@@ -1,0 +1,31 @@
+# Fixed numbers for spaces (workspaces).
+#
+# herdr numbers spaces by their position in the list, so the number of any given
+# space changes whenever one before it is created, closed, or reordered. Pin a
+# space here and it keeps that number wherever it drifts to.
+#
+# Copy this file to your plugin config dir, without the .example suffix:
+#   cp space-pins.conf.example "$(herdr plugin config-dir newro.agent-nav)/space-pins.conf"
+#
+# Format:  <number> = <pattern>
+#
+# Patterns, in the order they are tried (first match wins):
+#
+#   @mirror:<host>   a space herdr-mirror is mirroring from that host.
+#                    Match by mirror map rather than by label, because a mirrored
+#                    space follows the remote's name — "laptop: api" becomes
+#                    "laptop: web" the moment the remote switches, and a label
+#                    pin would come undone. Without herdr-mirror installed this
+#                    simply never matches.
+#   @mirror          any mirrored space, whichever host.
+#   <label glob>     matched against the space label; * and ? work, and a pattern
+#                    without them has to match exactly.
+#
+# Numbers are free-form strings, so "0" works even though herdr's own indexed
+# bindings only go 1..9 — which is the usual reason to pin one.
+#
+# Examples:
+#
+#   0 = @mirror:laptop
+#   7 = scratch
+#   8 = notes-*
